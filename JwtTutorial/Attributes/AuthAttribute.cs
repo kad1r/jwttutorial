@@ -3,7 +3,6 @@ using JwtTutorial.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.IdentityModel.Tokens;
 using System;
 
 namespace JwtTutorial.Attributes
@@ -13,37 +12,30 @@ namespace JwtTutorial.Attributes
 	{
 		protected readonly BlogcodefirstContext dbContext;
 		protected readonly ITokenService _tokenService;
+		protected readonly IUserService _userService;
 
-		public AuthAttribute(BlogcodefirstContext _context, ITokenService tokenService)
+		public AuthAttribute(BlogcodefirstContext _context, ITokenService tokenService, IUserService userService)
 		{
 			dbContext = _context;
 			_tokenService = tokenService;
+			_userService = userService;
 		}
 
 		public void OnAuthorization(AuthorizationFilterContext context)
 		{
 			var request = context.HttpContext.Request;
+			var authToken = new Microsoft.Extensions.Primitives.StringValues();
+			var token = request.Headers.TryGetValue("Authorization", out authToken);
 
-			if (request.HttpContext.User != null && request.HttpContext.User.Identity.IsAuthenticated)
+			authToken = authToken.ToString().Replace("Bearer ", "");
+
+			if (_tokenService.ValidateToken(authToken))
 			{
+				var claims = _tokenService.GetClaims(authToken);
+				var identity = _tokenService.GetIdentity(authToken);
 				// TODO
-				// Do some checks like token, refresh token, extend timeout, roles and etc.
-
-				var authToken = new Microsoft.Extensions.Primitives.StringValues();
-				var token = request.Headers.TryGetValue("Authorization", out authToken);
-
-				authToken = authToken.ToString().Replace("Bearer ", "");
-
-				var principal = _tokenService.ValidateToken(authToken);
-
-				var claims = context.HttpContext.User.Claims;
-
-				foreach (var item in claims)
-				{
-					//retVal.Add(new { item.Type, item.Value });
-				}
-
-				context.HttpContext.Response.Cookies.Append("refresh", "me");
+				// You can do some extra checks here
+				return;
 			}
 			else
 			{
